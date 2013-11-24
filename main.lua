@@ -42,10 +42,11 @@ end
 DeadBrick = {}
 DeadBrick.__index = DeadBrick
 
-function DeadBrick.new(x, y, width, height)
+function DeadBrick.new(x, y, width, height, fx, fy)
     local t = {
         rect = Rect.new(x, y, width, height),
-        age  = 0
+        velocityVector = Vector.new(fx, fy),
+        age = 0,
     }
 
     return setmetatable(t, DeadBrick)
@@ -56,10 +57,16 @@ function DeadBrick:maxAge()
 end
 
 function DeadBrick:update(dt)
+    -- age
     self.age = self.age + dt
     if self.age > self:maxAge() then
         deadBricks[self] = nil
+        return
     end
+
+    -- apply velocity
+    self.rect.origin.x = self.rect.origin.x + self.velocityVector.x
+    self.rect.origin.y = self.rect.origin.y + self.velocityVector.y
 end
 
 -- Idea: store the force vector in the dead brick and use it for drawing
@@ -142,7 +149,10 @@ function love.update(dt)
     for brick, _ in pairs(bricks) do
         if ball.rect:collidesWith(brick) then
             bricks[brick] = nil
-            deadBricks[DeadBrick.new(brick.origin.x, brick.origin.y, brick.size.width, brick.size.height)] = true
+            local x, y   = brick.origin.x, brick.origin.y
+            local w, h   = brick.size.width, brick.size.height
+            local fx, fy = ball.rect.origin.x - ball.oldRect.origin.x, ball.rect.origin.y - ball.oldRect.origin.y
+            deadBricks[DeadBrick.new(x, y, w, h, fx, fy)] = true
 
             if ball.oldRect:isFullyBelow(brick) or ball.oldRect:isFullyAbove(brick) then
                 ball.velocityVector.y = - ball.velocityVector.y
