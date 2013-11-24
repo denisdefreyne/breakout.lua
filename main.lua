@@ -9,11 +9,12 @@ local config = {
 
 -- variables
 
+local deadBricks
 local bricks
 local ball
 local paddle
 
--- types
+-- types - ball
 
 Ball = {}
 Ball.__index = Ball
@@ -36,14 +37,60 @@ function Ball:move(dt)
     self.rect.origin.y = self.rect.origin.y + dt*self.velocityVector.y
 end
 
+-- types - dead brick
+
+DeadBrick = {}
+DeadBrick.__index = DeadBrick
+
+function DeadBrick.new(x, y, width, height)
+    local t = {
+        rect = Rect.new(x, y, width, height),
+        age  = 0
+    }
+
+    return setmetatable(t, DeadBrick)
+end
+
+function DeadBrick:maxAge()
+    return 1.0
+end
+
+function DeadBrick:update(dt)
+    self.age = self.age + dt
+    if self.age > self:maxAge() then
+        deadBricks[self] = nil
+    end
+end
+
+-- Idea: store the force vector in the dead brick and use it for drawing
+function DeadBrick:render()
+    -- color
+    local alpha = (self:maxAge() - self.age) * 255/2
+    love.graphics.setColor(255, 255, 255, alpha)
+
+    -- rotation
+    local rotation = self.age
+
+    love.graphics.push()
+    love.graphics.translate(self.rect.origin.x, self.rect.origin.y + 1000 * self.age ^ 2)
+    love.graphics.rotate(rotation)
+    love.graphics.rectangle("fill", 0, 0, self.rect.size.width, self.rect.size.height)
+    love.graphics.pop()
+end
+
 -- lua entry points
 
 function love.load()
     math.randomseed(os.time())
-    generateBricks()
+    generateWorld()
 end
 
 function love.update(dt)
+    -- update dead bricks
+    for deadBrick, _ in pairs(deadBricks) do
+        deadBrick:update(dt)
+    end
+
     -- move paddle
     mouseX, _ = love.mouse.getPosition()
     paddle.origin.x = mouseX - paddle.size.width/2
@@ -95,6 +142,7 @@ function love.update(dt)
     for brick, _ in pairs(bricks) do
         if ball.rect:collidesWith(brick) then
             bricks[brick] = nil
+            deadBricks[DeadBrick.new(brick.origin.x, brick.origin.y, brick.size.width, brick.size.height)] = true
 
             if ball.oldRect:isFullyBelow(brick) or ball.oldRect:isFullyAbove(brick) then
                 ball.velocityVector.y = - ball.velocityVector.y
@@ -112,6 +160,11 @@ function love.draw()
         love.graphics.rectangle("fill", brick.origin.x, brick.origin.y, brick.size.width, brick.size.height)
     end
 
+    -- dead bricks
+    for deadBrick, _ in pairs(deadBricks) do
+        deadBrick:render()
+    end
+
     -- ball
     love.graphics.setColor(255, 255, 255, 255)
     love.graphics.rectangle("fill", ball.rect.origin.x, ball.rect.origin.y, ball.rect.size.width, ball.rect.size.height)
@@ -123,11 +176,14 @@ end
 
 -- model
 
-function generateBricks()
+function generateWorld()
+    -- dead bricks
+    deadBricks = {}
+
+    -- bricks
     local rectToFill = Rect.new(50, 50, love.graphics.getWidth() - 50, 200)
     local brickSize = Size.new(60, 20)
     local brickSpacing = Size.new(10, 10)
-
     bricks = {}
     local x = rectToFill:left()
     while x < rectToFill:right() - brickSize.width - brickSpacing.width do
@@ -139,7 +195,9 @@ function generateBricks()
         x = x + brickSize.width + brickSpacing.width
     end
 
+    -- ball
     ball = Ball.new(love.graphics.getWidth()/2 - 40, 400, 10, 10, 60, 300)
 
+    -- paddle
     paddle = Rect.new(360, 560, 120, 20)
 end
