@@ -1,3 +1,5 @@
+Timer = require('hump/timer')
+
 require "types"
 
 DeadBrick = require("entities/dead_brick")
@@ -27,6 +29,8 @@ function love.load()
 end
 
 function love.update(dt)
+    Timer.update(dt)
+
     -- update dead bricks
     for deadBrick, _ in pairs(deadBricks) do
         deadBrick:update(dt)
@@ -40,6 +44,7 @@ function love.update(dt)
 
     -- check collided with paddle
     if ball.rect:collidesWith(paddle.rect) then
+        ball:collidedVertically()
         if ball.oldRect:isFullyBelow(paddle.rect) or ball.oldRect:isFullyAbove(paddle.rect) then
             paddleMiddle, _ = paddle.rect:middle()
             ballMiddle, _   = ball.rect:middle()
@@ -59,13 +64,16 @@ function love.update(dt)
 
     -- check collided with wall
     if ball.rect:left() < 0 then
+        ball:collidedHorizontally()
         ball.rect.origin.x    = - ball.rect.origin.x
         ball.velocityVector:invertX()
     elseif ball.rect:right() > love.graphics.getWidth() then
+        ball:collidedHorizontally()
         ball.rect.origin.x    = love.graphics.getWidth() - (ball.rect:right() - love.graphics.getWidth())
         ball.velocityVector:invertX()
     end
     if ball.rect:top() < 0 then
+        ball:collidedVertically()
         ball.rect.origin.y    = - ball.rect.origin.y
         ball.velocityVector:invertY()
     elseif ball.rect:bottom() > love.graphics.getHeight() then
@@ -85,8 +93,10 @@ function love.update(dt)
             deadBricks[deadBrick] = true
 
             if ball.oldRect:isFullyBelow(brick.rect) or ball.oldRect:isFullyAbove(brick.rect) then
+                ball:collidedVertically()
                 ball.velocityVector.y = - ball.velocityVector.y
             elseif ball.oldRect:isFullyLeft(brick.rect) or ball.oldRect:isFullyRight(brick.rect) then
+                ball:collidedHorizontally()
                 ball.velocityVector.x = - ball.velocityVector.x
             end
         end
@@ -126,7 +136,8 @@ function generateWorld()
     while x < rectToFill:right() - brickSize.width - brickSpacing.width do
         local y = rectToFill:top()
         while y < rectToFill:bottom() - brickSize.height - brickSpacing.height do
-            bricks[Brick.new(x, y, brickSize.width, brickSize.height)] = true
+            brick = Brick.new(x, y, brickSize.width, brickSize.height)
+            bricks[brick] = true
             y = y + brickSize.height + brickSpacing.height
         end
         x = x + brickSize.width + brickSpacing.width

@@ -1,3 +1,5 @@
+Timer = require('hump/timer')
+
 Ball = {}
 Ball.__index = Ball
 
@@ -22,6 +24,38 @@ end
 function Ball:render()
     love.graphics.setColor(255, 255, 255, 255)
     love.graphics.rectangle("fill", self.rect.origin.x, self.rect.origin.y, self.rect.size.width, self.rect.size.height)
+end
+
+function Ball:collidedVertically()
+    local oldSize   = self.rect.size:dup()
+    local oldOrigin = self.rect.origin:dup()
+
+    local newSize  = self.rect.size
+    newSize.width  = oldSize.width * 2
+    newSize.height = oldSize.height / 2
+
+    local newOrigin = self.rect.origin
+    newOrigin.x = oldOrigin.x - oldSize.width / 2
+    newOrigin.y = oldOrigin.y - oldSize.height / 2
+
+    Timer.tween(1.0, newSize,   oldSize,   'out-elastic')
+    Timer.tween(1.0, newOrigin, oldOrigin, 'out-elastic')
+end
+
+function Ball:collidedHorizontally()
+    local oldSize   = self.rect.size:dup()
+    local oldOrigin = self.rect.origin:dup()
+
+    local newSize  = self.rect.size
+    newSize.width  = oldSize.width / 2
+    newSize.height = oldSize.height * 2
+
+    local newOrigin = self.rect.origin
+    newOrigin.x = oldOrigin.x - oldSize.width / 2
+    newOrigin.y = oldOrigin.y - oldSize.height / 2
+
+    Timer.tween(1.0, newSize,   oldSize,   'out-elastic')
+    Timer.tween(1.0, newOrigin, oldOrigin, 'out-elastic')
 end
 
 return Ball

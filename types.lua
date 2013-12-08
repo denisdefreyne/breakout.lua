@@ -24,6 +24,10 @@ function Point.new(x, y)
 	return setmetatable({ x = x, y = y }, Point)
 end
 
+function Point:dup()
+	return Point.new(self.x, self.y)
+end
+
 -- size
 
 Size = {}
@@ -31,6 +35,10 @@ Size.__index = Size
 
 function Size.new(width, height)
 	return setmetatable({ width = width, height = height }, Size)
+end
+
+function Size:dup()
+	return Size.new(self.width, self.height)
 end
 
 -- range
