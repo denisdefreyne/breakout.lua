@@ -62,7 +62,7 @@ function love.update(dt)
         ball.rect.origin.x    = - ball.rect.origin.x
         ball.velocityVector:invertX()
     elseif ball.rect:right() > love.graphics.getWidth() then
-        ball.rect.origin.x    = love.graphics.getWidth() + love.graphics.getWidth() - ball.rect.origin.x
+        ball.rect.origin.x    = love.graphics.getWidth() - (ball.rect:right() - love.graphics.getWidth())
         ball.velocityVector:invertX()
     end
     if ball.rect:top() < 0 then
