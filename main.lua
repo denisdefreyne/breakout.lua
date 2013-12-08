@@ -44,7 +44,6 @@ function love.update(dt)
 
     -- check collided with paddle
     if ball.rect:collidesWith(paddle.rect) then
-        ball:collidedVertically()
         if ball.oldRect:isFullyBelow(paddle.rect) or ball.oldRect:isFullyAbove(paddle.rect) then
             paddleMiddle, _ = paddle.rect:middle()
             ballMiddle, _   = ball.rect:middle()
@@ -57,25 +56,27 @@ function love.update(dt)
             end
 
             ball.velocityVector.y = - ball.velocityVector.y
+            ball:collidedVertically()
         elseif ball.oldRect:isFullyLeft(paddle.rect) or ball.oldRect:isFullyRight(paddle.rect) then
             ball.velocityVector.x = - ball.velocityVector.x
+            ball:collidedHorizontally()
         end
     end
 
     -- check collided with wall
     if ball.rect:left() < 0 then
-        ball:collidedHorizontally()
         ball.rect.origin.x    = - ball.rect.origin.x
         ball.velocityVector:invertX()
-    elseif ball.rect:right() > love.graphics.getWidth() then
         ball:collidedHorizontally()
+    elseif ball.rect:right() > love.graphics.getWidth() then
         ball.rect.origin.x    = love.graphics.getWidth() - (ball.rect:right() - love.graphics.getWidth())
         ball.velocityVector:invertX()
+        ball:collidedHorizontally()
     end
     if ball.rect:top() < 0 then
-        ball:collidedVertically()
         ball.rect.origin.y    = - ball.rect.origin.y
         ball.velocityVector:invertY()
+        ball:collidedVertically()
     elseif ball.rect:bottom() > love.graphics.getHeight() then
         -- nooooo
         love.load()
