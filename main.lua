@@ -1,5 +1,10 @@
 require "types"
 
+DeadBrick = require("entities/dead_brick")
+Ball      = require("entities/ball")
+Paddle    = require("entities/paddle")
+Brick     = require("entities/brick")
+
 -- config
 
 local config = {
@@ -13,77 +18,6 @@ local deadBricks
 local bricks
 local ball
 local paddle
-
--- types - ball
-
-Ball = {}
-Ball.__index = Ball
-
-function Ball.new(x, y, width, height, velocityX, velocityY)
-    local t = {
-        rect           = Rect.new(x, y, width, height),
-        oldRect        = Rect.new(x, y, width, height),
-        velocityVector = Vector.new(velocityX, velocityY),
-    }
-
-    return setmetatable(t, Ball)
-end
-
-function Ball:move(dt)
-    self.oldRect.origin.x = self.rect.origin.x
-    self.oldRect.origin.y = self.rect.origin.y
-
-    self.rect.origin.x = self.rect.origin.x + dt*self.velocityVector.x
-    self.rect.origin.y = self.rect.origin.y + dt*self.velocityVector.y
-end
-
--- types - dead brick
-
-DeadBrick = {}
-DeadBrick.__index = DeadBrick
-
-function DeadBrick.new(x, y, width, height, fx, fy)
-    local t = {
-        rect = Rect.new(x, y, width, height),
-        velocityVector = Vector.new(fx, fy),
-        age = 0,
-    }
-
-    return setmetatable(t, DeadBrick)
-end
-
-function DeadBrick:maxAge()
-    return 1.0
-end
-
-function DeadBrick:update(dt)
-    -- age
-    self.age = self.age + dt
-    if self.age > self:maxAge() then
-        deadBricks[self] = nil
-        return
-    end
-
-    -- apply velocity
-    self.rect.origin.x = self.rect.origin.x + self.velocityVector.x
-    self.rect.origin.y = self.rect.origin.y + self.velocityVector.y
-end
-
--- Idea: store the force vector in the dead brick and use it for drawing
-function DeadBrick:render()
-    -- color
-    local alpha = (self:maxAge() - self.age) * 255/2
-    love.graphics.setColor(255, 255, 255, alpha)
-
-    -- rotation
-    local rotation = self.age
-
-    love.graphics.push()
-    love.graphics.translate(self.rect.origin.x, self.rect.origin.y + 1000 * self.age ^ 2)
-    love.graphics.rotate(rotation)
-    love.graphics.rectangle("fill", 0, 0, self.rect.size.width, self.rect.size.height)
-    love.graphics.pop()
-end
 
 -- lua entry points
 
@@ -99,23 +33,17 @@ function love.update(dt)
     end
 
     -- move paddle
-    mouseX, _ = love.mouse.getPosition()
-    paddle.origin.x = mouseX - paddle.size.width/2
-    if paddle:left() < 0 then
-        paddle.origin.x = 0
-    elseif paddle:right() > love.graphics.getWidth() then
-        paddle.origin.x = love.graphics.getWidth() - paddle.size.width
-    end
+    paddle:update(dt)
 
     -- move ball
-    ball:move(dt)
+    ball:update(dt)
 
     -- check collided with paddle
-    if ball.rect:collidesWith(paddle) then
-        if ball.oldRect:isFullyBelow(paddle) or ball.oldRect:isFullyAbove(paddle) then
-            paddleMiddle, _ = paddle:middle()
+    if ball.rect:collidesWith(paddle.rect) then
+        if ball.oldRect:isFullyBelow(paddle.rect) or ball.oldRect:isFullyAbove(paddle.rect) then
+            paddleMiddle, _ = paddle.rect:middle()
             ballMiddle, _   = ball.rect:middle()
-            local factor = (ballMiddle - paddleMiddle) / paddle.size.width / 2
+            local factor = (ballMiddle - paddleMiddle) / paddle.rect.size.width / 2
             ball.velocityVector.x = ball.velocityVector.x + factor * config.paddleXVelocityFactor
             if ball.velocityVector.x > config.maxXVelocity then
                 ball.velocityVector.x = config.maxXVelocity
@@ -124,7 +52,7 @@ function love.update(dt)
             end
 
             ball.velocityVector.y = - ball.velocityVector.y
-        elseif ball.oldRect:isFullyLeft(paddle) or ball.oldRect:isFullyRight(paddle) then
+        elseif ball.oldRect:isFullyLeft(paddle.rect) or ball.oldRect:isFullyRight(paddle.rect) then
             ball.velocityVector.x = - ball.velocityVector.x
         end
     end
@@ -147,16 +75,18 @@ function love.update(dt)
 
     -- check collided with brick
     for brick, _ in pairs(bricks) do
-        if ball.rect:collidesWith(brick) then
+        if ball.rect:collidesWith(brick.rect) then
             bricks[brick] = nil
-            local x, y   = brick.origin.x, brick.origin.y
-            local w, h   = brick.size.width, brick.size.height
+            local x, y   = brick.rect.origin.x, brick.rect.origin.y
+            local w, h   = brick.rect.size.width, brick.rect.size.height
             local fx, fy = ball.rect.origin.x - ball.oldRect.origin.x, ball.rect.origin.y - ball.oldRect.origin.y
-            deadBricks[DeadBrick.new(x, y, w, h, fx, fy)] = true
+            deadBrick = DeadBrick.new(x, y, w, h, fx, fy)
+            deadBrick:onDeath(function(deadBrick) deadBricks[deadBrick] = nil end)
+            deadBricks[deadBrick] = true
 
-            if ball.oldRect:isFullyBelow(brick) or ball.oldRect:isFullyAbove(brick) then
+            if ball.oldRect:isFullyBelow(brick.rect) or ball.oldRect:isFullyAbove(brick.rect) then
                 ball.velocityVector.y = - ball.velocityVector.y
-            elseif ball.oldRect:isFullyLeft(brick) or ball.oldRect:isFullyRight(brick) then
+            elseif ball.oldRect:isFullyLeft(brick.rect) or ball.oldRect:isFullyRight(brick.rect) then
                 ball.velocityVector.x = - ball.velocityVector.x
             end
         end
@@ -166,8 +96,7 @@ end
 function love.draw()
     -- bricks
     for brick, _ in pairs(bricks) do
-        love.graphics.setColor(255, 255, 255, 255)
-        love.graphics.rectangle("fill", brick.origin.x, brick.origin.y, brick.size.width, brick.size.height)
+        brick:render()
     end
 
     -- dead bricks
@@ -176,12 +105,10 @@ function love.draw()
     end
 
     -- ball
-    love.graphics.setColor(255, 255, 255, 255)
-    love.graphics.rectangle("fill", ball.rect.origin.x, ball.rect.origin.y, ball.rect.size.width, ball.rect.size.height)
+    ball:render()
 
     -- paddle
-    love.graphics.setColor(255, 255, 255, 255)
-    love.graphics.rectangle("fill", paddle.origin.x, paddle.origin.y, paddle.size.width, paddle.size.height)
+    paddle:render()
 end
 
 -- model
@@ -199,7 +126,7 @@ function generateWorld()
     while x < rectToFill:right() - brickSize.width - brickSpacing.width do
         local y = rectToFill:top()
         while y < rectToFill:bottom() - brickSize.height - brickSpacing.height do
-            bricks[Rect.new(x, y, brickSize.width, brickSize.height)] = true
+            bricks[Brick.new(x, y, brickSize.width, brickSize.height)] = true
             y = y + brickSize.height + brickSpacing.height
         end
         x = x + brickSize.width + brickSpacing.width
@@ -209,5 +136,5 @@ function generateWorld()
     ball = Ball.new(love.graphics.getWidth()/2 - 40, 400, 10, 10, 60, 300)
 
     -- paddle
-    paddle = Rect.new(360, 560, 120, 20)
+    paddle = Paddle.new(360, 560, 120, 20)
 end
