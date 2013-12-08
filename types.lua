@@ -114,3 +114,12 @@ end
 function Rect:isFullyRight(other)
 	return self:left() > other:right()
 end
+
+function Rect:fill()
+	love.graphics.rectangle(
+		"fill",
+		self.origin.x,
+		self.origin.y,
+		self.size.width,
+		self.size.height)
+end

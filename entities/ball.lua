@@ -23,7 +23,7 @@ end
 
 function Ball:render()
     love.graphics.setColor(255, 255, 255, 255)
-    love.graphics.rectangle("fill", self.rect.origin.x, self.rect.origin.y, self.rect.size.width, self.rect.size.height)
+    self.rect:fill()
 end
 
 function Ball:collidedVertically()
